@@ -27,19 +27,20 @@ while true do
             File.WriteAllText ("timestamp.txt", now.ToFileTimeUtc().ToString())
     let lastRun =
         DateTime.FromFileTimeUtc (int64 <| File.ReadAllText("timestamp.txt"))
-    let client = new HttpClient()
+    let newSubPosts =
+        let client = new HttpClient()
 
-    client.BaseAddress <- new Uri("""http://reddit.com/r/tradecraftGame/new.rss""")
-    let request = new HttpRequestMessage()
-    request.Method <- HttpMethod.Get
-    client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Linux; Android 11; SAMSUNG SM-G973U) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/14.2 Chrome/87.0.4280.141 Mobile Safari/537.36")
-    let rssfeed = client.Send(request)
+        client.BaseAddress <- new Uri("""http://reddit.com/r/tradecraftGame/new.rss""")
+        let request = new HttpRequestMessage()
+        request.Method <- HttpMethod.Get
+        client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Linux; Android 11; SAMSUNG SM-G973U) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/14.2 Chrome/87.0.4280.141 Mobile Safari/537.36")
+        let rssfeed = client.Send(request)
 
-    let reader =
-        rssfeed.Content.ReadAsStream()
-        |> XmlReader.Create
+        let reader =
+            rssfeed.Content.ReadAsStream()
+            |> XmlReader.Create
 
-    let entries =
+
         seq {
             let root = (XDocument.Load reader).Root
             let xmlns = root.Name.Namespace
@@ -57,10 +58,44 @@ while true do
         }
         |> List.ofSeq
         |> List.rev
+    let newDevPosts =
+        let client = new HttpClient()
+
+        client.BaseAddress <- new Uri("""https://reddit.com/user/Professional_Low_757/comments.rss""")
+        let request = new HttpRequestMessage()
+        request.Method <- HttpMethod.Get
+        client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Linux; Android 11; SAMSUNG SM-G973U) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/14.2 Chrome/87.0.4280.141 Mobile Safari/537.36")
+        let rssfeed = client.Send(request)
+
+        let reader =
+            rssfeed.Content.ReadAsStream()
+            |> XmlReader.Create
+
+
+        seq {
+            let root = (XDocument.Load reader).Root
+            let xmlns = root.Name.Namespace
+            let n (entry: XElement) str =
+                entry.Element (xmlns + str)
+            let entries = root.Elements () |> Seq.where (fun x -> x.Name.LocalName = "entry") |> List.ofSeq
+            for entry in entries do
+                let author = (n (n entry "author") "name").Value
+                let content = (n entry "content").Value |> fun x -> Regex.Replace (x, "<.*?>|•|\u0026", "")
+                let link = ((n entry "link").Attribute "href").Value
+                let published = DateTime.Parse ((n entry "updated").Value)
+                let title = (n entry "title").Value
+                if (published > lastRun) then
+                    yield {Author =  author; Content = content; Link = link; Published =  published; Title = title}
+        }
+        |> List.ofSeq
+        |> List.rev
+    let newposts =
+        List.append newSubPosts newDevPosts
+        |> List.sortBy (_.Published)
 
     let dcclient = new WebClient ()
 
-    for newest in entries do
+    for newest in newposts do
         dcclient.Headers.Add ("Content-Type", "application/json")
         let payload = $$"""{
         "embeds": [{
