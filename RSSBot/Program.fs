@@ -16,7 +16,8 @@ type Post =
         Title: string
     }
 if not (File.Exists "webhook.txt") then
-    Console.WriteLine ("webhook not found")
+
+    Console.WriteLine ("webhook not found in " + Directory.GetCurrentDirectory())
     exit -1
 let whurl =  new Uri (File.ReadAllText "webhook.txt")
 
