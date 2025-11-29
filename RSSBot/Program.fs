@@ -20,11 +20,10 @@ if not (File.Exists "webhook.txt") then
     Console.WriteLine ("webhook not found in " + Directory.GetCurrentDirectory())
     exit -1
 let whurl =  new Uri (File.ReadAllText "webhook.txt")
-
-while true do
-    if not (File.Exists "timestamp.txt") then
+if not (File.Exists "timestamp.txt") then
             let now = DateTime.Now.AddDays -100
             File.WriteAllText ("timestamp.txt", now.ToFileTimeUtc().ToString())
+while true do
     let lastRun =
         DateTime.FromFileTimeUtc (int64 <| File.ReadAllText("timestamp.txt"))
     let newSubPosts =
@@ -51,7 +50,7 @@ while true do
                 let author = (n (n entry "author") "name").Value
                 let content = (n entry "content").Value |> fun x -> Regex.Replace (x, "<.*?>|•|\u0026", "")
                 let link = ((n entry "link").Attribute "href").Value
-                let published = DateTime.Parse ((n entry "published").Value)
+                let published = (DateTime.Parse ((n entry "published").Value)).ToUniversalTime()
                 let title = (n entry "title").Value
                 if (published > lastRun) then
                     yield {Author =  author; Content = content; Link = link; Published =  published; Title = title}
@@ -82,7 +81,7 @@ while true do
                 let author = (n (n entry "author") "name").Value
                 let content = (n entry "content").Value |> fun x -> Regex.Replace (x, "<.*?>|•|\u0026", "")
                 let link = ((n entry "link").Attribute "href").Value
-                let published = DateTime.Parse ((n entry "updated").Value)
+                let published = (DateTime.Parse ((n entry "updated").Value)).ToUniversalTime()
                 let title = (n entry "title").Value
                 if (published > lastRun) then
                     yield {Author =  author; Content = content; Link = link; Published =  published; Title = title}
