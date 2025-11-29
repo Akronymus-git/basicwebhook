@@ -15,6 +15,9 @@ type Post =
         Published: DateTime
         Title: string
     }
+if not (File.Exists "webhook.txt") then
+    Console.WriteLine ("webhook not found")
+    exit -1
 let whurl =  new Uri (File.ReadAllText "webhook.txt")
 
 while true do
