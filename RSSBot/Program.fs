@@ -1,0 +1,73 @@
+﻿open System
+open System.IO
+open System.Net
+open System.Net.Http
+open System.Text
+open System.Text.RegularExpressions
+open System.Threading
+open System.Xml
+open System.Xml.Linq
+type Post =
+    {
+        Author: string
+        Content: string
+        Link: string
+        Published: DateTime
+        Title: string
+    }
+let whurl =  new Uri (File.ReadAllText "webhook.txt")
+
+while true do
+    if not (File.Exists "timestamp.txt") then
+            let now = DateTime.Now
+            File.WriteAllText ("timestamp.txt", now.ToFileTimeUtc().ToString())
+    let lastRun =
+        DateTime.FromFileTimeUtc (int64 <| File.ReadAllText("timestamp.txt"))
+    let client = new HttpClient()
+
+    client.BaseAddress <- new Uri("""http://reddit.com/r/tradecraftGame/new.rss""")
+    let request = new HttpRequestMessage()
+    request.Method <- HttpMethod.Get
+    client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Linux; Android 11; SAMSUNG SM-G973U) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/14.2 Chrome/87.0.4280.141 Mobile Safari/537.36")
+    let rssfeed = client.Send(request)
+
+    let reader =
+        rssfeed.Content.ReadAsStream()
+        |> XmlReader.Create
+
+    let entries =
+        seq {
+            let root = (XDocument.Load reader).Root
+            let xmlns = root.Name.Namespace
+            let n (entry: XElement) str =
+                entry.Element (xmlns + str)
+            let entries = root.Elements () |> Seq.where (fun x -> x.Name.LocalName = "entry") |> List.ofSeq
+            for entry in entries do
+                let author = (n (n entry "author") "name").Value
+                let content = (n entry "content").Value |> fun x -> Regex.Replace (x, "<.*?>|•", "")
+                let link = ((n entry "link").Attribute "href").Value
+                let published = DateTime.Parse ((n entry "published").Value)
+                let title = (n entry "title").Value
+                if (published > lastRun) then
+                    yield {Author =  author; Content = content; Link = link; Published =  published; Title = title}
+        }
+        |> List.ofSeq
+        |> List.rev
+
+    let dcclient = new WebClient ()
+    dcclient.Headers.Add ("Content-Type", "application/json")
+    for newest in entries do
+        let payload = $$"""{
+        "embeds": [{
+            "color": 16729344,
+            "author": {"name": "u/{{newest.Author}}",  "url": "https://www.reddit.com/user/{{newest.Author}}"},
+            "title": "{{newest.Title}}",
+            "url": "{{newest.Link}}",
+            "description": "{{newest.Content.Substring(0, Math.Min (1000, newest.Content.Length))}}",
+            "footer": {"text": "r/tradecraftgame - Posted at {{newest.Published}}"}
+            }]
+
+        }"""
+        dcclient.UploadData(whurl, Encoding.UTF8.GetBytes payload) |> ignore
+    File.WriteAllText ("timestamp.txt", DateTime.Now.ToFileTimeUtc().ToString())
+    Thread.Sleep(1000*60*5)
