@@ -23,7 +23,7 @@ let whurl =  new Uri (File.ReadAllText "webhook.txt")
 
 while true do
     if not (File.Exists "timestamp.txt") then
-            let now = DateTime.Now
+            let now = DateTime.Now.AddDays -100
             File.WriteAllText ("timestamp.txt", now.ToFileTimeUtc().ToString())
     let lastRun =
         DateTime.FromFileTimeUtc (int64 <| File.ReadAllText("timestamp.txt"))
@@ -48,7 +48,7 @@ while true do
             let entries = root.Elements () |> Seq.where (fun x -> x.Name.LocalName = "entry") |> List.ofSeq
             for entry in entries do
                 let author = (n (n entry "author") "name").Value
-                let content = (n entry "content").Value |> fun x -> Regex.Replace (x, "<.*?>|•", "")
+                let content = (n entry "content").Value |> fun x -> Regex.Replace (x, "<.*?>|•|\u0026", "")
                 let link = ((n entry "link").Attribute "href").Value
                 let published = DateTime.Parse ((n entry "published").Value)
                 let title = (n entry "title").Value
@@ -59,19 +59,28 @@ while true do
         |> List.rev
 
     let dcclient = new WebClient ()
-    dcclient.Headers.Add ("Content-Type", "application/json")
+
     for newest in entries do
+        dcclient.Headers.Add ("Content-Type", "application/json")
         let payload = $$"""{
         "embeds": [{
             "color": 16729344,
-            "author": {"name": "u/{{newest.Author}}",  "url": "https://www.reddit.com/user/{{newest.Author}}"},
+            "author": {"name": "{{newest.Author}}",  "url": "https://www.reddit.com{{newest.Author}}"},
             "title": "{{newest.Title}}",
             "url": "{{newest.Link}}",
-            "description": "{{newest.Content.Substring(0, Math.Min (1000, newest.Content.Length))}}",
+            "description": "{{newest.Content.Substring(0, Math.Min (100, newest.Content.Length))}}",
             "footer": {"text": "r/tradecraftgame - Posted at {{newest.Published}}"}
             }]
 
         }"""
-        dcclient.UploadData(whurl, Encoding.UTF8.GetBytes payload) |> ignore
+        try
+            dcclient.UploadData(whurl, Encoding.UTF8.GetBytes payload) |> ignore
+        with
+        | :? WebException as  we ->
+            let rs = new StreamReader (we.Response.GetResponseStream())
+            let res = rs.ReadToEnd()
+            Console.WriteLine res
+
+        Thread.Sleep(1000*5)
     File.WriteAllText ("timestamp.txt", DateTime.Now.ToFileTimeUtc().ToString())
     Thread.Sleep(1000*60*5)
