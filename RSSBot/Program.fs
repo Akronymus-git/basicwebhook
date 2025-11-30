@@ -150,11 +150,11 @@ while true do
                 "embeds": [{
                     "color": 16729344,
                     "title": "Bot error",
-                    "description": "{{res}}",
+                    "description": "{{res.Replace ("\"", "\\\"")}}"
                     }]
                 }"""
             dcclient.UploadData(whurl, Encoding.UTF8.GetBytes payload) |> ignore
-
+            raise we
 
         Thread.Sleep(1000*5)
     File.WriteAllText ("timestamp.txt", exectime.ToFileTimeUtc().ToString())
