@@ -149,13 +149,9 @@ while true do
             let payload = $$"""{
                 "embeds": [{
                     "color": 16729344,
-                    "author": {"name": "{{newest.Author}}",  "url": "https://www.reddit.com{{newest.Author}}"},
-                    "title": "{{newest.Title}}",
-                    "url": "{{newest.Link}}",
-                    "description": "{{newest.Content.Substring(0, Math.Min (1500, newest.Content.Length))}}",
-                    "footer": {"text": "r/tradecraftgame - Posted at {{newest.Published}}"}
+                    "title": "Bot error",
+                    "description": "{{res}}",
                     }]
-
                 }"""
             dcclient.UploadData(whurl, Encoding.UTF8.GetBytes payload) |> ignore
 
