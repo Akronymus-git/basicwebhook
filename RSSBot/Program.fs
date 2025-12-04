@@ -53,6 +53,7 @@ let cleanup =
     >> rep "</h\d>" "\\n"
     >> rep "</?ol>" "\\n"
     >> _.Trim()
+let mutable alreadyPosted = set<string>[]
 while true do
     let lastRun =
         DateTime.FromFileTimeUtc (int64 <| File.ReadAllText("timestamp.txt"))
@@ -82,7 +83,8 @@ while true do
                 let link = ((n entry "link").Attribute "href").Value
                 let published = (DateTime.Parse ((n entry "published").Value)).ToUniversalTime()
                 let title = (n entry "title").Value
-                if (published > lastRun) then
+                if (published > lastRun) && not (alreadyPosted.Contains link) then
+                    alreadyPosted <- alreadyPosted.Add link
                     yield {Author =  author; Content = content; Link = link; Published =  published; Title = title}
         }
         |> List.ofSeq
@@ -113,7 +115,8 @@ while true do
                 let link = Regex.Replace (((n entry "link").Attribute "href").Value,"/$","" )+ "?context=3"
                 let published = (DateTime.Parse ((n entry "updated").Value)).ToUniversalTime()
                 let title = (n entry "title").Value
-                if (published > lastRun) then
+                if (published > lastRun) && not (alreadyPosted.Contains link) then
+                    alreadyPosted <- alreadyPosted.Add link
                     yield {Author =  author; Content = content; Link = link; Published =  published; Title = title}
         }
         |> List.ofSeq
