@@ -72,20 +72,28 @@ while true do
 
 
         seq {
-            let root = (XDocument.Load reader).Root
-            let xmlns = root.Name.Namespace
-            let n (entry: XElement) str =
-                entry.Element (xmlns + str)
-            let entries = root.Elements () |> Seq.where (fun x -> x.Name.LocalName = "entry") |> List.ofSeq
-            for entry in entries do
-                let author = (n (n entry "author") "name").Value
-                let content = (n entry "content").Value |> cleanup
-                let link = ((n entry "link").Attribute "href").Value
-                let published = (DateTime.Parse ((n entry "published").Value)).ToUniversalTime()
-                let title = (n entry "title").Value
-                if (published > lastRun) && not (alreadyPosted.Contains link) then
-                    alreadyPosted <- alreadyPosted.Add link
-                    yield {Author =  author; Content = content; Link = link; Published =  published; Title = title}
+            let document = (XDocument.Load reader)
+            try
+                let root = document.Root
+                let xmlns = root.Name.Namespace
+                let n (entry: XElement) str =
+                    entry.Element (xmlns + str)
+                let entries = root.Elements () |> Seq.where (fun x -> x.Name.LocalName = "entry") |> List.ofSeq
+                for entry in entries do
+                    let author = (n (n entry "author") "name").Value
+                    let content = (n entry "content").Value |> cleanup
+                    let link = ((n entry "link").Attribute "href").Value
+                    let published = (DateTime.Parse ((n entry "published").Value)).ToUniversalTime()
+                    let title = (n entry "title").Value
+                    if (published > lastRun) && not (alreadyPosted.Contains link) then
+                        alreadyPosted <- alreadyPosted.Add link
+                        yield {Author =  author; Content = content; Link = link; Published =  published; Title = title}
+            with
+            | :? Exception as e ->
+                Console.WriteLine e.Message
+                Console.WriteLine document
+
+
         }
         |> List.ofSeq
         |> List.rev
