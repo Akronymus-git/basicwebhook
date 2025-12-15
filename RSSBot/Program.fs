@@ -168,6 +168,6 @@ while true do
             dcclient.UploadData(whurl, Encoding.UTF8.GetBytes payload) |> ignore
             raise we
 
-        Thread.Sleep(1000*5)
+        Thread.Sleep(1000)
     File.WriteAllText ("timestamp.txt", exectime.ToFileTimeUtc().ToString())
     Thread.Sleep(1000*60*5)
