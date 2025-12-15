@@ -52,7 +52,6 @@ let cleanup =
     >> rep "</li>" "\\n"
     >> rep "</h\d>" "\\n"
     >> rep "</?ol>" "\\n"
-    >> rep "\"" "\\\""
     >> _.Trim()
 let mutable alreadyPosted = set<string>[]
 while true do
