@@ -52,6 +52,7 @@ let cleanup =
     >> rep "</li>" "\\n"
     >> rep "</h\d>" "\\n"
     >> rep "</?ol>" "\\n"
+    >> rep "\"" "\\\""
     >> _.Trim()
 let mutable alreadyPosted = set<string>[]
 while true do
@@ -81,7 +82,7 @@ while true do
                 let entries = root.Elements () |> Seq.where (fun x -> x.Name.LocalName = "entry") |> List.ofSeq
                 for entry in entries do
                     let author = (n (n entry "author") "name").Value
-                    let content = (n entry "content").Value |> cleanup
+                    let content = (n entry "content").Value
                     let link = ((n entry "link").Attribute "href").Value
                     let published = (DateTime.Parse ((n entry "published").Value)).ToUniversalTime()
                     let title = (n entry "title").Value
@@ -119,7 +120,7 @@ while true do
             let entries = root.Elements () |> Seq.where (fun x -> x.Name.LocalName = "entry") |> List.ofSeq
             for entry in entries do
                 let author = (n (n entry "author") "name").Value
-                let content = (n entry "content").Value |> cleanup
+                let content = (n entry "content").Value
                 let link = Regex.Replace (((n entry "link").Attribute "href").Value,"/$","" )+ "?context=3"
                 let published = (DateTime.Parse ((n entry "updated").Value)).ToUniversalTime()
                 let title = (n entry "title").Value
@@ -141,10 +142,10 @@ while true do
         let payload = $$"""{
         "embeds": [{
             "color": 16729344,
-            "author": {"name": "{{newest.Author}}",  "url": "https://www.reddit.com{{newest.Author}}"},
-            "title": "{{newest.Title}}",
-            "url": "{{newest.Link}}",
-            "description": "{{newest.Content.Substring(0, Math.Min (1500, newest.Content.Length))}}",
+            "author": {"name": "{{cleanup newest.Author}}",  "url": "https://www.reddit.com{{cleanup newest.Author}}"},
+            "title": "{{cleanup newest.Title}}",
+            "url": "{{cleanup newest.Link}}",
+            "description": "{{cleanup (newest.Content.Substring(0, Math.Min (1500, newest.Content.Length)))}}",
             "footer": {"text": "r/tradecraftgame - Posted at {{newest.Published}}"}
             }]
 
@@ -156,6 +157,7 @@ while true do
             let rs = new StreamReader (we.Response.GetResponseStream())
             let res = rs.ReadToEnd()
             Console.WriteLine res
+            Console.WriteLine payload
             dcclient.Headers.Add ("Content-Type", "application/json")
             let payload = $$"""{
                 "embeds": [{
