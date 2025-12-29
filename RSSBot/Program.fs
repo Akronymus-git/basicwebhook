@@ -57,83 +57,89 @@ let mutable alreadyPosted = set<string>[]
 while true do
     let lastRun =
         DateTime.FromFileTimeUtc (int64 <| File.ReadAllText("timestamp.txt"))
-    let newSubPosts =
-        let client = new HttpClient()
+    let exectime, newposts =
+        try
 
-        client.BaseAddress <- new Uri("""http://reddit.com/r/tradecraftGame/new.rss""")
-        let request = new HttpRequestMessage()
-        request.Method <- HttpMethod.Get
-        client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Linux; Android 11; SAMSUNG SM-G973U) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/14.2 Chrome/87.0.4280.141 Mobile Safari/537.36")
-        let rssfeed = client.Send(request)
+            let newSubPosts =
+                let client = new HttpClient()
 
-        let reader =
-            rssfeed.Content.ReadAsStream()
-            |> XmlReader.Create
+                client.BaseAddress <- new Uri("""http://reddit.com/r/tradecraftGame/new.rss""")
+                let request = new HttpRequestMessage()
+                request.Method <- HttpMethod.Get
+                client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Linux; Android 11; SAMSUNG SM-G973U) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/14.2 Chrome/87.0.4280.141 Mobile Safari/537.36")
+                let rssfeed = client.Send(request)
 
-
-        seq {
-            let document = (XDocument.Load reader)
-            try
-                let root = document.Root
-                let xmlns = root.Name.Namespace
-                let n (entry: XElement) str =
-                    entry.Element (xmlns + str)
-                let entries = root.Elements () |> Seq.where (fun x -> x.Name.LocalName = "entry") |> List.ofSeq
-                for entry in entries do
-                    let author = (n (n entry "author") "name").Value
-                    let content = (n entry "content").Value
-                    let link = ((n entry "link").Attribute "href").Value
-                    let published = (DateTime.Parse ((n entry "published").Value)).ToUniversalTime()
-                    let title = (n entry "title").Value
-                    if (published > lastRun) && not (alreadyPosted.Contains link) then
-                        alreadyPosted <- alreadyPosted.Add link
-                        yield {Author =  author; Content = content; Link = link; Published =  published; Title = title}
-            with
-            | :? Exception as e ->
-                Console.WriteLine e.Message
-                Console.WriteLine document
+                let reader =
+                    rssfeed.Content.ReadAsStream()
+                    |> XmlReader.Create
 
 
-        }
-        |> List.ofSeq
-        |> List.rev
-    let newDevPosts =
-        let client = new HttpClient()
+                seq {
+                    let document = (XDocument.Load reader)
+                    try
+                        let root = document.Root
+                        let xmlns = root.Name.Namespace
+                        let n (entry: XElement) str =
+                            entry.Element (xmlns + str)
+                        let entries = root.Elements () |> Seq.where (fun x -> x.Name.LocalName = "entry") |> List.ofSeq
+                        for entry in entries do
+                            let author = (n (n entry "author") "name").Value
+                            let content = (n entry "content").Value
+                            let link = ((n entry "link").Attribute "href").Value
+                            let published = (DateTime.Parse ((n entry "published").Value)).ToUniversalTime()
+                            let title = (n entry "title").Value
+                            if (published > lastRun) && not (alreadyPosted.Contains link) then
+                                alreadyPosted <- alreadyPosted.Add link
+                                yield {Author =  author; Content = content; Link = link; Published =  published; Title = title}
+                    with
+                    | :? Exception as e ->
+                        Console.WriteLine e.Message
+                        Console.WriteLine document
 
-        client.BaseAddress <- new Uri("""https://reddit.com/user/Professional_Low_757/comments.rss""")
-        let request = new HttpRequestMessage()
-        request.Method <- HttpMethod.Get
-        client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Linux; Android 11; SAMSUNG SM-G973U) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/14.2 Chrome/87.0.4280.141 Mobile Safari/537.36")
-        let rssfeed = client.Send(request)
 
-        let reader =
-            rssfeed.Content.ReadAsStream()
-            |> XmlReader.Create
+                }
+                |> List.ofSeq
+                |> List.rev
+            let newDevPosts =
+                let client = new HttpClient()
+
+                client.BaseAddress <- new Uri("""https://reddit.com/user/Professional_Low_757/comments.rss""")
+                let request = new HttpRequestMessage()
+                request.Method <- HttpMethod.Get
+                client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Linux; Android 11; SAMSUNG SM-G973U) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/14.2 Chrome/87.0.4280.141 Mobile Safari/537.36")
+                let rssfeed = client.Send(request)
+
+                let reader =
+                    rssfeed.Content.ReadAsStream()
+                    |> XmlReader.Create
 
 
-        seq {
-            let root = (XDocument.Load reader).Root
-            let xmlns = root.Name.Namespace
-            let n (entry: XElement) str =
-                entry.Element (xmlns + str)
-            let entries = root.Elements () |> Seq.where (fun x -> x.Name.LocalName = "entry") |> List.ofSeq
-            for entry in entries do
-                let author = (n (n entry "author") "name").Value
-                let content = (n entry "content").Value
-                let link = Regex.Replace (((n entry "link").Attribute "href").Value,"/$","" )+ "?context=3"
-                let published = (DateTime.Parse ((n entry "updated").Value)).ToUniversalTime()
-                let title = (n entry "title").Value
-                if (published > lastRun) && not (alreadyPosted.Contains link) then
-                    alreadyPosted <- alreadyPosted.Add link
-                    yield {Author =  author; Content = content; Link = link; Published =  published; Title = title}
-        }
-        |> List.ofSeq
-        |> List.rev
-    let exectime = DateTime.Now
-    let newposts =
-        List.append newSubPosts newDevPosts
-        |> List.sortBy (_.Published)
+                seq {
+                    let root = (XDocument.Load reader).Root
+                    let xmlns = root.Name.Namespace
+                    let n (entry: XElement) str =
+                        entry.Element (xmlns + str)
+                    let entries = root.Elements () |> Seq.where (fun x -> x.Name.LocalName = "entry") |> List.ofSeq
+                    for entry in entries do
+                        let author = (n (n entry "author") "name").Value
+                        let content = (n entry "content").Value
+                        let link = Regex.Replace (((n entry "link").Attribute "href").Value,"/$","" )+ "?context=3"
+                        let published = (DateTime.Parse ((n entry "updated").Value)).ToUniversalTime()
+                        let title = (n entry "title").Value
+                        if (published > lastRun) && not (alreadyPosted.Contains link) then
+                            alreadyPosted <- alreadyPosted.Add link
+                            yield {Author =  author; Content = content; Link = link; Published =  published; Title = title}
+                }
+                |> List.ofSeq
+                |> List.rev
 
+
+            DateTime.Now, List.append newSubPosts newDevPosts
+            |> List.sortBy (_.Published)
+        with
+        | e ->
+            Console.WriteLine e.Message
+            lastRun,[]
     let dcclient = new WebClient ()
 
     for newest in newposts do
@@ -152,7 +158,7 @@ while true do
         try
             dcclient.UploadData(whurl, Encoding.UTF8.GetBytes payload) |> ignore
         with
-        | :? WebException as  we ->
+        | :? WebException as we ->
             let rs = new StreamReader (we.Response.GetResponseStream())
             let res = rs.ReadToEnd()
             Console.WriteLine res

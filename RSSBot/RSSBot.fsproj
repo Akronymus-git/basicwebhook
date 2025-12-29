@@ -6,8 +6,10 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <Content Include="webhook.txt">
+          <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </Content>
         <Compile Include="Program.fs"/>
-        <Content Include="webhook.txt" CopyToOutputDirectory="Always"/>
     </ItemGroup>
 
 </Project>
